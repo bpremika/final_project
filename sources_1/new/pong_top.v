@@ -13,8 +13,8 @@ module pong_top(
     input clk,              // 100MHz
     input reset,            // btnR
     input [3:0] btn,        // btnD, btnU
-    input PS2Data,          // USB HID (PS/2) Keyboard Data
-    input PS2Clk,           // USB HID (PS/2) Keyboard Clock
+//    input PS2Data,          // USB HID (PS/2) Keyboard Data
+//    input PS2Clk,           // USB HID (PS/2) Keyboard Clock
     output hsync,           // to VGA Connector
     output vsync,           // to VGA Connector
     output [11:0] rgb,       // to DAC, to VGA Connector
@@ -36,27 +36,27 @@ module pong_top(
     wire [3:0] text_on;
     wire [11:0] graph_rgb, text_rgb;
     reg [11:0] rgb_reg, rgb_next;
-    wire [3:0] dig0, dig1;
-    reg[2:0] score1_reg=0,score1_next,score2_reg=0,score2_next;
-    reg gra_still, d_inc, d_clr, timer_start;
+    wire [3:0] dig0, dig1, dig2, dig3;
+    
+    reg gra_still, d1_inc, d2_inc, d_clr, timer_start;
     wire timer_tick, timer_up;
     reg [1:0] ball_reg, ball_next;
 
     reg [15:0] keycode;
     wire oflag;
 
-    // Instantiate the PS/2 receiver
-    PS2Receiver receiver (
-        .clk(clk),
-        .kclk(PS2Clk),
-        .kdata(PS2Data),
-        .keycode(keycode),
-        .oflag(oflag)
-    );
+//    // Instantiate the PS/2 receiver
+//    PS2Receiver receiver (
+//        .clk(clk),
+//        .kclk(PS2Clk),
+//        .kdata(PS2Data),
+//        .keycode(keycode),
+//        .oflag(oflag)
+//    );
 
-    // Replace btn with keyboard inputs
-    assign btn[0] = (oflag && keycode == 16'h0015) ? 1'b1 : 1'b0; // 'q' for btnU
-    assign btn[1] = (oflag && keycode == 16'h001C) ? 1'b1 : 1'b0; // 'a' for btnD
+//    // Replace btn with keyboard inputs
+//    assign btn[0] = (oflag && keycode == 16'h0015) ? 1'b1 : 1'b0; // 'q' for btnU
+//    assign btn[1] = (oflag && keycode == 16'h001C) ? 1'b1 : 1'b0; // 'a' for btnD
 
 
     // Module Instantiations
@@ -74,8 +74,10 @@ module pong_top(
         .clk(clk),
         .x(w_x),
         .y(w_y),
-        .dig0(dig0),
-        .dig1(dig1),
+        .dig10(dig0),
+        .dig11(dig1),
+        .dig20(dig2),
+        .dig21(dig3),
         .ball(ball_reg),
         .text_on(text_on),
         .text_rgb(text_rgb));
@@ -122,11 +124,18 @@ module pong_top(
     m100_counter counter_unit(
         .clk(clk),
         .reset(reset),
-        .d_inc(d_inc),
+        .d_inc(d1_inc),
         .d_clr(d_clr),
         .dig0(dig0),
         .dig1(dig1));
-       
+    
+    m100_counter counter_unit2(
+        .clk(clk),
+        .reset(reset),
+        .d_inc(d2_inc),
+        .d_clr(d_clr),
+        .dig0(dig2),
+        .dig1(dig3));
     
     // FSMD state and registers
     always @(posedge clk or posedge reset)
@@ -134,15 +143,12 @@ module pong_top(
             state_reg <= newgame;
             ball_reg <= 0;
             rgb_reg <= 0;
-            score1_reg<=0;
-			score2_reg<=0;
         end
     
         else begin
             state_reg <= state_next;
             ball_reg <= ball_next;
-            score1_reg<=score1_next;
-			score2_reg<=score2_next;
+          
             if(w_p_tick)
                 rgb_reg <= rgb_next;
         end
@@ -151,10 +157,9 @@ module pong_top(
     always @* begin
         gra_still = 1'b1;
         timer_start = 1'b0;
-        d_inc = 1'b0;
+        d1_inc = 1'b0;
+        d2_inc = 1'b0;
         d_clr = 1'b0;
-        score1_next=score1_reg;
-		score2_next=score2_reg;
         state_next = state_reg;
         ball_next = ball_reg;
         
@@ -162,8 +167,7 @@ module pong_top(
             newgame: begin
                 ball_next = 2'b11;          // three balls
                 d_clr = 1'b1;               // clear score
-                score1_next=0;
-			    score2_next=0;
+          
                 if(btn != 2'b00) begin      // button pressed
                     state_next = play;
                     ball_next = ball_reg - 1;    
@@ -172,11 +176,10 @@ module pong_top(
             
             play: begin
                 gra_still = 1'b0;   // animated screen
+                if(hit1) d1_inc = 1'b1;
+                else if(hit2) d2_inc = 1'b1;
                 
                 if(miss1 ||miss2) begin
-                    if(miss1) score2_next=score2_reg+1; //player 2 score increases if player 1 misses
-                    else score1_next=score1_reg+1;
-          
                     if(ball_reg == 0)
                         state_next = over;
                     
