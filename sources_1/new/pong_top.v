@@ -13,6 +13,8 @@ module pong_top(
     input clk,              // 100MHz
     input reset,            // btnR
     input [3:0] btn,        // btnD, btnU
+    input PS2Data,          // USB HID (PS/2) Keyboard Data
+    input PS2Clk,           // USB HID (PS/2) Keyboard Clock
     output hsync,           // to VGA Connector
     output vsync,           // to VGA Connector
     output [11:0] rgb,       // to DAC, to VGA Connector
@@ -39,8 +41,24 @@ module pong_top(
     reg gra_still, d_inc, d_clr, timer_start;
     wire timer_tick, timer_up;
     reg [1:0] ball_reg, ball_next;
-    
-    
+
+    reg [15:0] keycode;
+    wire oflag;
+
+    // Instantiate the PS/2 receiver
+    PS2Receiver receiver (
+        .clk(clk),
+        .kclk(PS2Clk),
+        .kdata(PS2Data),
+        .keycode(keycode),
+        .oflag(oflag)
+    );
+
+    // Replace btn with keyboard inputs
+    assign btn[0] = (oflag && keycode == 16'h0015) ? 1'b1 : 1'b0; // 'q' for btnU
+    assign btn[1] = (oflag && keycode == 16'h001C) ? 1'b1 : 1'b0; // 'a' for btnD
+
+
     // Module Instantiations
     vga_controller vga_unit(
         .clk_100MHz(clk),
