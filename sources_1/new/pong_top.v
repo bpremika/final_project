@@ -12,10 +12,11 @@
 module pong_top(
     input clk,              // 100MHz
     input reset,            // btnR
-    input [1:0] btn,        // btnD, btnU
+    input [3:0] btn,        // btnD, btnU
     output hsync,           // to VGA Connector
     output vsync,           // to VGA Connector
-    output [11:0] rgb       // to DAC, to VGA Connector
+    output [11:0] rgb,       // to DAC, to VGA Connector
+    output [3:0] led
     );
     
     // state declarations for 4 states
@@ -28,11 +29,13 @@ module pong_top(
     // signal declaration
     reg [1:0] state_reg, state_next;
     wire [9:0] w_x, w_y;
-    wire w_vid_on, w_p_tick, graph_on, hit, miss;
+    wire [2:0] graph_on;
+    wire w_vid_on, w_p_tick, hit1, hit2, miss1, miss2;
     wire [3:0] text_on;
     wire [11:0] graph_rgb, text_rgb;
     reg [11:0] rgb_reg, rgb_next;
     wire [3:0] dig0, dig1;
+    reg[2:0] score1_reg=0,score1_next,score2_reg=0,score2_next;
     reg gra_still, d_inc, d_clr, timer_start;
     wire timer_tick, timer_up;
     reg [1:0] ball_reg, ball_next;
@@ -58,7 +61,22 @@ module pong_top(
         .ball(ball_reg),
         .text_on(text_on),
         .text_rgb(text_rgb));
-        
+    
+//     pong_graphic m2 //control logic for any graphs on the game
+//	(
+//		.clk(clk),
+//		.rst_n(reset),
+//		.video_on(w_vid_on),
+//		.gra_still(gra_still), //return to default screen with no motion
+//		.btn(btn), //key[1:0] for player 1 and key[3:2] for player 2
+//		.pixel_x(w_x),
+//		.pixel_y(w_y),
+//		.rgb(graph_rgb),
+//		.graph_on(graph_on),
+//		.miss1(miss1),
+//		.miss2(miss2), //miss1=player 1 misses  , miss2=player2 misses
+//	    .led(led)
+//    );
     pong_graph graph_unit(
         .clk(clk),
         .reset(reset),
@@ -67,8 +85,10 @@ module pong_top(
         .video_on(w_vid_on),
         .x(w_x),
         .y(w_y),
-        .hit(hit),
-        .miss(miss),
+        .hit_player1(hit1),
+        .miss_player1(miss1),
+        .hit_player2(hit2),
+        .miss_player2(miss2),
         .graph_on(graph_on),
         .graph_rgb(graph_rgb));
     
@@ -96,11 +116,15 @@ module pong_top(
             state_reg <= newgame;
             ball_reg <= 0;
             rgb_reg <= 0;
+            score1_reg<=0;
+			score2_reg<=0;
         end
     
         else begin
             state_reg <= state_next;
             ball_reg <= ball_next;
+            score1_reg<=score1_next;
+			score2_reg<=score2_next;
             if(w_p_tick)
                 rgb_reg <= rgb_next;
         end
@@ -111,6 +135,8 @@ module pong_top(
         timer_start = 1'b0;
         d_inc = 1'b0;
         d_clr = 1'b0;
+        score1_next=score1_reg;
+		score2_next=score2_reg;
         state_next = state_reg;
         ball_next = ball_reg;
         
@@ -118,7 +144,8 @@ module pong_top(
             newgame: begin
                 ball_next = 2'b11;          // three balls
                 d_clr = 1'b1;               // clear score
-                
+                score1_next=0;
+			    score2_next=0;
                 if(btn != 2'b00) begin      // button pressed
                     state_next = play;
                     ball_next = ball_reg - 1;    
@@ -128,10 +155,10 @@ module pong_top(
             play: begin
                 gra_still = 1'b0;   // animated screen
                 
-                if(hit)
-                    d_inc = 1'b1;   // increment score
-                
-                else if(miss) begin
+                if(miss1 ||miss2) begin
+                    if(miss1) score2_next=score2_reg+1; //player 2 score increases if player 1 misses
+                    else score1_next=score1_reg+1;
+          
                     if(ball_reg == 0)
                         state_next = over;
                     
@@ -169,9 +196,8 @@ module pong_top(
                 rgb_next = text_rgb;    // colors in pong_text
                 
             else
-                rgb_next = 12'h0FF;     // aqua background
+                rgb_next = graph_rgb;     //  background
     
     // output
     assign rgb = rgb_reg;
-    
 endmodule
