@@ -38,8 +38,8 @@ module vga_controller(
     parameter HMAX = HD+HF+HB+HR-1; // max value of horizontal counter = 799
     // Total vertical length of screen = 525 pixels, partitioned into sections
     parameter VD = 480;             // vertical display area length in pixels 
-    parameter VF = 8;              // vertical front porch length in pixels  
-    parameter VB = 35;              // vertical back porch length in pixels   
+    parameter VF = 10;              // vertical front porch length in pixels  
+    parameter VB = 33;              // vertical back porch length in pixels   
     parameter VR = 2;               // vertical retrace length in pixels  
     parameter VMAX = VD+VF+VB+VR-1; // max value of vertical counter = 524   
     

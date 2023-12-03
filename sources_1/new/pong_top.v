@@ -40,7 +40,7 @@ module pong_top(
     
     reg gra_still, d1_inc, d2_inc, d_clr, timer_start;
     wire timer_tick, timer_up;
-    reg [1:0] ball_reg, ball_next;
+//    reg [1:0] ball_reg, ball_next;
 
     reg [15:0] keycode;
     wire oflag;
@@ -78,7 +78,6 @@ module pong_top(
         .dig11(dig1),
         .dig20(dig2),
         .dig21(dig3),
-        .ball(ball_reg),
         .text_on(text_on),
         .text_rgb(text_rgb));
     
@@ -110,7 +109,9 @@ module pong_top(
         .hit_player2(hit2),
         .miss_player2(miss2),
         .graph_on(graph_on),
-        .graph_rgb(graph_rgb));
+        .graph_rgb(graph_rgb),
+        .led(led));
+        
     
     // 60 Hz tick when screen is refreshed
     assign timer_tick = (w_x == 0) && (w_y == 0);
@@ -141,13 +142,13 @@ module pong_top(
     always @(posedge clk or posedge reset)
         if(reset) begin
             state_reg <= newgame;
-            ball_reg <= 0;
+//            ball_reg <= 0;
             rgb_reg <= 0;
         end
     
         else begin
             state_reg <= state_next;
-            ball_reg <= ball_next;
+//            ball_reg <= ball_next;
           
             if(w_p_tick)
                 rgb_reg <= rgb_next;
@@ -161,33 +162,41 @@ module pong_top(
         d2_inc = 1'b0;
         d_clr = 1'b0;
         state_next = state_reg;
-        ball_next = ball_reg;
+//        ball_next = ball_reg;
         
         case(state_reg)
             newgame: begin
-                ball_next = 2'b11;          // three balls
+//                ball_next = 2'b11;          // three balls
                 d_clr = 1'b1;               // clear score
           
                 if(btn != 2'b00) begin      // button pressed
                     state_next = play;
-                    ball_next = ball_reg - 1;    
+//                    ball_next = ball_reg - 1;    
                 end
             end
             
             play: begin
                 gra_still = 1'b0;   // animated screen
-                if(hit1) d1_inc = 1'b1;
-                else if(hit2) d2_inc = 1'b1;
+                //if(hit1) d1_inc = 1'b1;
+                //else if(hit2) d2_inc = 1'b1;
                 
                 if(miss1 ||miss2) begin
-                    if(ball_reg == 0)
+                    if (miss1)
+                        d2_inc = 1'b1;
+                    else 
+                        d1_inc = 1'b1; 
+                    
+                    if((dig1 == 9 && dig0 == 9) ||(dig3 == 9 && dig2 == 9))
                         state_next = over;
+                        
+//                    if(ball_reg == 0)
+//                        state_next = over;
                     
                     else
                         state_next = newball;
                     
                     timer_start = 1'b1;     // 2 sec timer
-                    ball_next = ball_reg - 1;
+//                    ball_next = ball_reg - 1;
                 end
             end
             

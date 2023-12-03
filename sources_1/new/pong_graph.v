@@ -17,6 +17,7 @@ module pong_graph(
     input video_on,
     input [9:0] x,
     input [9:0] y,
+    output reg[3:0] led,
     output graph_on,
     output reg hit_player1, miss_player1, hit_player2, miss_player2,   // ball hit or miss
     output reg [11:0] graph_rgb
@@ -173,7 +174,6 @@ module pong_graph(
         miss_player2 = 1'b0;
         x_delta_next = x_delta_reg;
         y_delta_next = y_delta_reg;
-        
         if(gra_still) begin
             x_delta_next = BALL_VELOCITY_NEG;
             y_delta_next = BALL_VELOCITY_POS;
@@ -188,20 +188,20 @@ module pong_graph(
         else if(x_ball_l <= X_PAD1_R &&            // collide with paddle 1
                 (y_pad1_t <= y_ball_b) && (y_ball_t <= y_pad1_b)) begin
             x_delta_next = BALL_VELOCITY_POS;
-            hit_player1 = 1'b1;
         end
         
         else if(x_ball_r >= X_PAD2_L &&            // collide with paddle 2
                 (y_pad2_t <= y_ball_b) && (y_ball_t <= y_pad2_b)) begin
             x_delta_next = BALL_VELOCITY_NEG;
-            hit_player2 = 1'b1;
         end
         
-        else if(x_ball_r > X_MAX)
-            miss_player1 = 1'b1;
-        
-        else if(x_ball_l < 0)
+        else if(x_ball_r > X_MAX) begin
             miss_player2 = 1'b1;
+        end
+        else if(x_ball_l < 0) begin
+            miss_player1 = 1'b1;
+            led = 2;
+        end
     end
     
     // output status signal for graphics 
