@@ -31,6 +31,13 @@ module pong_graph(
     wire refresh_tick;
     assign refresh_tick = ((y == 481) && (x == 0)) ? 1 : 0; // start of vsync (vertical retrace)
     
+    // TOP wall boundaries
+    parameter T_WALL_T = 64;    
+    parameter T_WALL_B = 71;    // 8 pixels wide
+    // BOTTOM wall boundaries
+    parameter B_WALL_T = 472;    
+    parameter B_WALL_B = 479;    // 8 pixels wide
+    
     // PADDLES
     // player 1 paddle horizontal boundaries
     parameter X_PAD1_L = 20;
@@ -103,8 +110,12 @@ module pong_graph(
         endcase
     
     // OBJECT STATUS SIGNALS
-    wire pad1_on, pad2_on, sq_ball_on, ball_on;
+    wire t_wall_on, b_wall_on, pad1_on, pad2_on, sq_ball_on, ball_on;
     wire [11:0] pad1_rgb, pad2_rgb, ball_rgb, bg_rgb;
+    
+    // pixel within wall boundaries
+    assign t_wall_on = ((T_WALL_T <= y) && (y <= T_WALL_B)) ? 1 : 0;
+    assign b_wall_on = ((B_WALL_T <= y) && (y <= B_WALL_B)) ? 1 : 0;
     
     // paddle 1
     assign y_pad1_t = y_pad1_reg;                                   // paddle 1 top position
@@ -119,6 +130,7 @@ module pong_graph(
                      (y_pad2_t <= y) && (y <= y_pad2_b);
     
     // assign object colors
+    assign wall_rgb  = 12'h00F;    // blue walls
     assign pad1_rgb  = 12'h00F;    // blue paddle 1
     assign pad2_rgb  = 12'h0F0;    // green paddle 2
     assign ball_rgb  = 12'hF00;    // red ball
@@ -130,14 +142,14 @@ module pong_graph(
         y_pad2_next = y_pad2_reg;     // no move for paddle 2
         
         if(refresh_tick) begin
-            if(btn[1] & (y_pad1_b < (Y_MAX - 1 - PAD_VELOCITY)))
+            if(btn[1] & (y_pad1_b < (B_WALL_T - 1 - PAD_VELOCITY)))
                 y_pad1_next = y_pad1_reg + PAD_VELOCITY;  // move paddle 1 down
-            else if(btn[0] & (y_pad1_t > 0))
+            else if(btn[0] & (y_pad1_t > (T_WALL_B - 1 - PAD_VELOCITY)))
                 y_pad1_next = y_pad1_reg - PAD_VELOCITY;  // move paddle 1 up
             
-            if(btn[3] & (y_pad2_b < (Y_MAX - 1 - PAD_VELOCITY)))
+            if(btn[3] & (y_pad2_b < (B_WALL_T - 1 - PAD_VELOCITY)))
                 y_pad2_next = y_pad2_reg + PAD_VELOCITY;  // move paddle 2 down
-            else if(btn[2] & (y_pad2_t > 0))
+            else if(btn[2] & (y_pad2_t > (T_WALL_B - 1 - PAD_VELOCITY)))
                 y_pad2_next = y_pad2_reg - PAD_VELOCITY;  // move paddle 2 up
         end
     end
@@ -174,18 +186,19 @@ module pong_graph(
         miss_player2 = 1'b0;
         x_delta_next = x_delta_reg;
         y_delta_next = y_delta_reg;
+        
         if(gra_still) begin
             x_delta_next = BALL_VELOCITY_NEG;
             y_delta_next = BALL_VELOCITY_POS;
         end
         
-        else if(y_ball_t < 0)                      // reach top
-            y_delta_next = BALL_VELOCITY_POS;     // move down
+        else if(y_ball_t < T_WALL_B)            // reach top
+            y_delta_next = BALL_VELOCITY_POS;   // move down
         
-        else if(y_ball_b > (Y_MAX - 1))            // reach bottom
-            y_delta_next = BALL_VELOCITY_NEG;     // move up
+        else if(y_ball_b > (B_WALL_T))         // reach bottom wall
+            y_delta_next = BALL_VELOCITY_NEG;  // move up
         
-        else if(x_ball_l <= X_PAD1_R &&            // collide with paddle 1
+        else if(x_ball_l <= X_PAD1_R &&        // collide with paddle 1
                 (y_pad1_t <= y_ball_b) && (y_ball_t <= y_pad1_b)) begin
             x_delta_next = BALL_VELOCITY_POS;
         end
@@ -195,22 +208,24 @@ module pong_graph(
             x_delta_next = BALL_VELOCITY_NEG;
         end
         
-        else if(x_ball_r > X_MAX) begin
+        else if(x_ball_r > X_PAD2_R + 1) begin
             miss_player2 = 1'b1;
         end
-        else if(x_ball_l < 0) begin
+        else if(x_ball_l < X_PAD1_L - 1) begin
             miss_player1 = 1'b1;
             led = 2;
         end
     end
     
     // output status signal for graphics 
-    assign graph_on = pad1_on | pad2_on | ball_on;
+    assign graph_on = t_wall_on | b_wall_on | pad1_on | pad2_on | ball_on;
     
     // rgb multiplexing circuit
     always @*
         if(~video_on)
             graph_rgb = 12'h000;      // no value, blank
+        else if (t_wall_on | b_wall_on)
+            graph_rgb = wall_rgb;     // wall color
         else if(pad1_on)
             graph_rgb = pad1_rgb;     // paddle 1 color
         else if(pad2_on)
