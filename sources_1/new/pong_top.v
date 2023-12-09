@@ -15,10 +15,12 @@ module pong_top(
     input [3:0] btn,        // btnD, btnU
 //    input PS2Data,          // USB HID (PS/2) Keyboard Data
 //    input PS2Clk,           // USB HID (PS/2) Keyboard Clock
+    input wire RsRx, //uart
+//    output wire RsTx, //uart
     output hsync,           // to VGA Connector
     output vsync,           // to VGA Connector
     output [11:0] rgb,       // to DAC, to VGA Connector
-    output [3:0] led
+    output [15:0] led
     );
     
     // state declarations for 4 states
@@ -42,9 +44,40 @@ module pong_top(
     wire timer_tick, timer_up;
 //    reg [1:0] ball_reg, ball_next;
 
-    reg [15:0] keycode;
-    wire oflag;
+//    wire [15:0] keycode;
+//    wire oflag;
+//    reg  [ 2:0] bcount=0;
+//    reg         cn=0;
+//    reg  [15:0] keycodev=0;
+//    reg         start=0;
 
+    reg [3: 0] keyboardInput;
+    
+    reg en, last_rec;
+    reg [7:0] data_in;
+    wire [7:0] data_out;
+    wire sent, received, baud;
+    
+    baudrate_gen baudrate_gen(clk, baud);
+    uart_rx receiver(baud, RsRx, received, data_out);
+    
+    always @(posedge baud) begin
+        if (en) en = 0;
+        if (~last_rec & received) begin
+            data_in = data_out + 8'h01;
+            if (data_in <= 8'h7A && data_in >= 8'h41) en = 1;
+            
+            // Map UART input to button inputs
+            case (data_in)
+                8'h72: keyboardInput = 4'b0001; // 'q'
+                8'h62: keyboardInput = 4'b0010; // 'a'
+                8'h70: keyboardInput = 4'b0100; // 'o'
+                8'h6C: keyboardInput = 4'b1000; // 'k'
+                default: keyboardInput = 4'b0000;
+            endcase
+        end
+        last_rec = received;
+    end
 //    // Instantiate the PS/2 receiver
 //    PS2Receiver receiver (
 //        .clk(clk),
@@ -53,11 +86,34 @@ module pong_top(
 //        .keycode(keycode),
 //        .oflag(oflag)
 //    );
+    
+//    always@(keycode)
+//        if (keycode[7:0] == 8'hf0) begin
+//            cn <= 1'b0;
+//            bcount <= 3'd0;
+//        end else if (keycode[15:8] == 8'hf0) begin
+//            cn <= keycode != keycodev;
+//            bcount <= 3'd5;
+//        end else begin
+//            cn <= keycode[7:0] != keycodev[7:0] || keycodev[15:8] == 8'hf0;
+//            bcount <= 3'd2;
+//        end
+    
+//    always@(posedge clk)
+//        if (oflag == 1'b1 && cn == 1'b1) begin
+//            start <= 1'b1;
+//            keycodev <= keycode;
+//        end else
+//            start <= 1'b0;
 
-//    // Replace btn with keyboard inputs
-//    assign btn[0] = (oflag && keycode == 16'h0015) ? 1'b1 : 1'b0; // 'q' for btnU
-//    assign btn[1] = (oflag && keycode == 16'h001C) ? 1'b1 : 1'b0; // 'a' for btnD
-
+//    // Replace keyboardInput with keyboard inputs
+//    assign keyboardInput[0] = (oflag && keycodev[3:0] == 4'b0101) ? 1'b1 : 1'b0; // 'q' for btn U
+//    assign keyboardInput[1] = (oflag && keycodev[3:0] == 4'b1100) ? 1'b1 : 1'b0; // 'a' for btnL
+//    assign keyboardInput[2] = (oflag && keycodev[3:0] == 4'b1101) ? 1'b1 : 1'b0; // 'p' for btnC
+//    assign keyboardInput[3] = (oflag && keycodev[3:0] == 4'b1011) ? 1'b1 : 1'b0; // 'l' for btnD
+////    assign led = btn;
+//    assign led = keycodev;
+//    assign led[15] = oflag;
 
     // Module Instantiations
     vga_controller vga_unit(
@@ -99,7 +155,7 @@ module pong_top(
     pong_graph graph_unit(
         .clk(clk),
         .reset(reset),
-        .btn(btn),
+        .btn(keyboardInput),
         .gra_still(gra_still),
         .video_on(w_vid_on),
         .x(w_x),
@@ -169,7 +225,7 @@ module pong_top(
 //                ball_next = 2'b11;          // three balls
                 d_clr = 1'b1;               // clear score
           
-                if(btn != 2'b00) begin      // button pressed
+                if(keyboardInput != 2'b00) begin      // button pressed
                     state_next = play;
 //                    ball_next = ball_reg - 1;    
                 end
@@ -201,7 +257,7 @@ module pong_top(
             end
             
             newball: // wait for 2 sec and until button pressed
-            if(timer_up && (btn != 2'b00))
+            if(timer_up && (keyboardInput != 2'b00))
                 state_next = play;
                 
             over:   // wait 2 sec to display game over
