@@ -13,13 +13,10 @@ module pong_top(
     input clk,              // 100MHz
     input reset,            // btnR
     input [3:0] btn,        // btnD, btnU
-//    input PS2Data,          // USB HID (PS/2) Keyboard Data
-//    input PS2Clk,           // USB HID (PS/2) Keyboard Clock
-    input wire RsRx, //uart
-//    output wire RsTx, //uart
+    input wire RsRx,        //uart
     output hsync,           // to VGA Connector
     output vsync,           // to VGA Connector
-    output [11:0] rgb,       // to DAC, to VGA Connector
+    output [11:0] rgb,      // to DAC, to VGA Connector
     output [15:0] led
     );
     
@@ -42,14 +39,6 @@ module pong_top(
     
     reg gra_still, d1_inc, d2_inc, d_clr, timer_start;
     wire timer_tick, timer_up;
-//    reg [1:0] ball_reg, ball_next;
-
-//    wire [15:0] keycode;
-//    wire oflag;
-//    reg  [ 2:0] bcount=0;
-//    reg         cn=0;
-//    reg  [15:0] keycodev=0;
-//    reg         start=0;
 
     reg [3: 0] keyboardInput;
     
@@ -78,42 +67,6 @@ module pong_top(
         end
         last_rec = received;
     end
-//    // Instantiate the PS/2 receiver
-//    PS2Receiver receiver (
-//        .clk(clk),
-//        .kclk(PS2Clk),
-//        .kdata(PS2Data),
-//        .keycode(keycode),
-//        .oflag(oflag)
-//    );
-    
-//    always@(keycode)
-//        if (keycode[7:0] == 8'hf0) begin
-//            cn <= 1'b0;
-//            bcount <= 3'd0;
-//        end else if (keycode[15:8] == 8'hf0) begin
-//            cn <= keycode != keycodev;
-//            bcount <= 3'd5;
-//        end else begin
-//            cn <= keycode[7:0] != keycodev[7:0] || keycodev[15:8] == 8'hf0;
-//            bcount <= 3'd2;
-//        end
-    
-//    always@(posedge clk)
-//        if (oflag == 1'b1 && cn == 1'b1) begin
-//            start <= 1'b1;
-//            keycodev <= keycode;
-//        end else
-//            start <= 1'b0;
-
-//    // Replace keyboardInput with keyboard inputs
-//    assign keyboardInput[0] = (oflag && keycodev[3:0] == 4'b0101) ? 1'b1 : 1'b0; // 'q' for btn U
-//    assign keyboardInput[1] = (oflag && keycodev[3:0] == 4'b1100) ? 1'b1 : 1'b0; // 'a' for btnL
-//    assign keyboardInput[2] = (oflag && keycodev[3:0] == 4'b1101) ? 1'b1 : 1'b0; // 'p' for btnC
-//    assign keyboardInput[3] = (oflag && keycodev[3:0] == 4'b1011) ? 1'b1 : 1'b0; // 'l' for btnD
-////    assign led = btn;
-//    assign led = keycodev;
-//    assign led[15] = oflag;
 
     // Module Instantiations
     vga_controller vga_unit(
@@ -137,21 +90,6 @@ module pong_top(
         .text_on(text_on),
         .text_rgb(text_rgb));
     
-//     pong_graphic m2 //control logic for any graphs on the game
-//	(
-//		.clk(clk),
-//		.rst_n(reset),
-//		.video_on(w_vid_on),
-//		.gra_still(gra_still), //return to default screen with no motion
-//		.btn(btn), //key[1:0] for player 1 and key[3:2] for player 2
-//		.pixel_x(w_x),
-//		.pixel_y(w_y),
-//		.rgb(graph_rgb),
-//		.graph_on(graph_on),
-//		.miss1(miss1),
-//		.miss2(miss2), //miss1=player 1 misses  , miss2=player2 misses
-//	    .led(led)
-//    );
     pong_graph graph_unit(
         .clk(clk),
         .reset(reset),
@@ -198,13 +136,11 @@ module pong_top(
     always @(posedge clk or posedge reset)
         if(reset) begin
             state_reg <= newgame;
-//            ball_reg <= 0;
             rgb_reg <= 0;
         end
     
         else begin
             state_reg <= state_next;
-//            ball_reg <= ball_next;
           
             if(w_p_tick)
                 rgb_reg <= rgb_next;
@@ -218,23 +154,18 @@ module pong_top(
         d2_inc = 1'b0;
         d_clr = 1'b0;
         state_next = state_reg;
-//        ball_next = ball_reg;
         
         case(state_reg)
             newgame: begin
-//                ball_next = 2'b11;          // three balls
                 d_clr = 1'b1;               // clear score
           
                 if(keyboardInput != 2'b00) begin      // button pressed
                     state_next = play;
-//                    ball_next = ball_reg - 1;    
                 end
             end
             
             play: begin
                 gra_still = 1'b0;   // animated screen
-                //if(hit1) d1_inc = 1'b1;
-                //else if(hit2) d2_inc = 1'b1;
                 
                 if(miss1 ||miss2) begin
                     if (miss1)
@@ -244,15 +175,11 @@ module pong_top(
                     
                     if((dig1 == 9 && dig0 == 9) ||(dig3 == 9 && dig2 == 9))
                         state_next = over;
-                        
-//                    if(ball_reg == 0)
-//                        state_next = over;
                     
                     else
                         state_next = newball;
                     
                     timer_start = 1'b1;     // 2 sec timer
-//                    ball_next = ball_reg - 1;
                 end
             end
             
@@ -282,7 +209,7 @@ module pong_top(
                 rgb_next = text_rgb;    // colors in pong_text
                 
             else
-                rgb_next = graph_rgb;     //  background
+                rgb_next = graph_rgb;   //  background
     
     // output
     assign rgb = rgb_reg;
