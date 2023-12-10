@@ -12,12 +12,10 @@
 module pong_top(
     input clk,              // 100MHz
     input reset,            // btnR
-    input [3:0] btn,        // btnD, btnU
     input wire RsRx,        //uart
     output hsync,           // to VGA Connector
     output vsync,           // to VGA Connector
-    output [11:0] rgb,      // to DAC, to VGA Connector
-    output [15:0] led
+    output [11:0] rgb      // to DAC, to VGA Connector
     );
     
     // state declarations for 4 states
