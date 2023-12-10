@@ -171,7 +171,7 @@ module pong_top(
                     else 
                         d1_inc = 1'b1; 
                     
-                    if((dig1 == 9 && dig0 == 9) ||(dig3 == 9 && dig2 == 9))
+                    if((dig1 == 9 && dig0 == 8) ||(dig3 == 9 && dig2 == 8))
                         state_next = over;
                     
                     else

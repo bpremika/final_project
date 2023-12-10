@@ -40,7 +40,6 @@ module pong_text(
    // - line 1, 16 chars: "Score: dd Ball: d"
    // ---------------------------------------------------------------------------
    assign score_on = (y >= 32) && (y < 64) && (x[9:4] < 32);
-   //assign score_on = (y[9:5] == 0) && (x[9:4] < 16);
    assign row_addr_s = y[4:1];
    assign bit_addr_s = x[3:1];
    always @*
@@ -111,22 +110,6 @@ module pong_text(
             bit_addr = bit_addr_s;
             if(ascii_bit)
                 text_rgb = 12'hF00; // red
-        end
-        
-        else if(rule_on) begin
-            char_addr = char_addr_r;
-            row_addr = row_addr_r;
-            bit_addr = bit_addr_r;
-            if(ascii_bit)
-                text_rgb = 12'hF00; // red
-        end
-        
-        else if(logo_on) begin
-            char_addr = char_addr_l;
-            row_addr = row_addr_l;
-            bit_addr = bit_addr_l;
-            if(ascii_bit)
-                text_rgb = 12'hFF0; // yellow
         end
         
         else begin // game over
